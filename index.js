@@ -34,8 +34,8 @@ app.get('/users/:id', (req, res) => {
 
 app.post('/users', (req, res) => {
     pool.query(
-        'INSERT INTO `users` (`fname`, `lname`, `username`, `password`, `avatar`) VALUES (?, ?, ?, ?, ?)',
-        [req.body.fname, req.body.lname, req.body.username, req.body.password, req.body.avatar],
+        'INSERT INTO `users` (`username`, `userpassword`, `avatar`) VALUES (?, ?, ?)',
+        [req.body.username, req.body.password, req.body.avatar],
          function (err, results, fields) {
             if (err) {
                 console.error('Error in POST /users:', err);
@@ -49,7 +49,7 @@ app.post('/users', (req, res) => {
 
 app.put('/users', (req, res) => {
     pool.query(
-        'UPDATE `users` SET `fname`=?, `lname`=?, `username`=?, `password`=?, `avatar`=? WHERE id =?',
+        'UPDATE `users` SET `username`=?, `userpassword`=?, `avatar`=? WHERE id =?',
         [req.body.fname, req.body.lname, req.body.username, req.body.password, req.body.avatar, req.body.id],
          function (err, results, fields) {
             res.send(results)
