@@ -7,14 +7,14 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-const connection = mysql.createConnection(process.env.DATABASE_URL)
+const pool = mysql.createPool(process.env.DATABASE_URL)
 
 app.get('/', (req, res) => {
     res.send('Hello world!!')
 })
 
 app.get('/users', (req, res) => {
-    connection.query(
+    pool.query(
         'SELECT * FROM users',
         function (err, results, fields) {
             res.send(results)
@@ -24,7 +24,7 @@ app.get('/users', (req, res) => {
 
 app.get('/users/:id', (req, res) => {
     const id = req.params.id;
-    connection.query(
+    pool.query(
         'SELECT * FROM users WHERE id = ?', [id],
         function (err, results, fields) {
             res.send(results)
@@ -33,7 +33,7 @@ app.get('/users/:id', (req, res) => {
 })
 
 app.post('/users', (req, res) => {
-    connection.query(
+    pool.query(
         'INSERT INTO `users` (`fname`, `lname`, `username`, `password`, `avatar`) VALUES (?, ?, ?, ?, ?)',
         [req.body.fname, req.body.lname, req.body.username, req.body.password, req.body.avatar],
          function (err, results, fields) {
@@ -48,7 +48,7 @@ app.post('/users', (req, res) => {
 })
 
 app.put('/users', (req, res) => {
-    connection.query(
+    pool.query(
         'UPDATE `users` SET `fname`=?, `lname`=?, `username`=?, `password`=?, `avatar`=? WHERE id =?',
         [req.body.fname, req.body.lname, req.body.username, req.body.password, req.body.avatar, req.body.id],
          function (err, results, fields) {
@@ -58,7 +58,7 @@ app.put('/users', (req, res) => {
 })
 
 app.delete('/users', (req, res) => {
-    connection.query(
+    pool.query(
         'DELETE FROM `users` WHERE id =?',
         [req.body.id],
          function (err, results, fields) {
