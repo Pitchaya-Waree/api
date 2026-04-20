@@ -32,25 +32,38 @@ app.get('/users/:id', (req, res) => {
     )
 })
 
-app.post('/users', (req, res) => {
+app.post('/register', (req, res) => {
+    const { username, userpassword, avatar } = req.body;
     pool.query(
-        'INSERT INTO `users` (`username`, `userpassword`, `avatar`) VALUES (?, ?, ?)',
-        [req.body.username, req.body.password, req.body.avatar],
-         function (err, results, fields) {
-            if (err) {
-                console.error('Error in POST /users:', err);
-                res.status(500).send('Error adding user');
+        'INSERT INTO users (username, userpassword, avatar) VALUES (?, ?, ?)',
+        [username, userpassword, avatar],
+        function (err, results) {
+            if (err) return res.status(500).send(err);
+            res.status(200).send({ message: "สมัครสมาชิกสำเร็จ" });
+        }
+    );
+});
+
+app.post('/login', (req, res) => {
+    const { username, userpassword } = req.body;
+    pool.query(
+        'SELECT * FROM users WHERE username = ? AND userpassword = ?',
+        [username, userpassword],
+        function (err, results) {
+            if (err) return res.status(500).send(err);
+            if (results.length > 0) {
+                res.status(200).send({ status: "ok", user: results[0] });
             } else {
-                res.status(200).send(results);
+                res.status(401).send({ status: "error", message: "ชื่อผู้ใช้หรือรหัสผ่านผิด" });
             }
         }
-    )
-})
+    );
+});
 
 app.put('/users', (req, res) => {
     pool.query(
         'UPDATE `users` SET `username`=?, `userpassword`=?, `avatar`=? WHERE id =?',
-        [req.body.fname, req.body.lname, req.body.username, req.body.password, req.body.avatar, req.body.id],
+        [req.body.username, req.body.userpassword, req.body.avatar, req.body.id],
          function (err, results, fields) {
             res.send(results)
         }
