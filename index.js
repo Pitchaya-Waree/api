@@ -105,7 +105,7 @@ app.get('/gacha', (req, res) => {
             i.item_name,
             i.rarity,
             i.item_image
-        FROM gacha_history h
+        FROM gacha h
         JOIN users u ON h.user_id = u.id
         JOIN items i ON h.item_id = i.id
         JOIN games g ON i.game_id = g.id
