@@ -26,7 +26,7 @@ const pool = mysql.createPool(process.env.DATABASE_URL);
 app.post('/register', (req, res) => {
     const { username, userpassword, avatar } = req.body;
     const sql = "INSERT INTO users (username, userpassword, avatar) VALUES (?, ?, ?)";
-    
+
     pool.query(sql, [username, userpassword, avatar], (err, result) => {
         if (err) {
             console.error("Register Error:", err);
@@ -40,7 +40,7 @@ app.post('/register', (req, res) => {
 app.post('/login', (req, res) => {
     const { username, userpassword } = req.body;
     const sql = "SELECT * FROM users WHERE username = ? AND userpassword = ?";
-    
+
     pool.query(sql, [username, userpassword], (err, results) => {
         if (err) {
             console.error("Login Error:", err);
@@ -62,7 +62,7 @@ app.post('/login', (req, res) => {
 app.get('/games', (req, res) => {
     // ORDER BY เพื่อให้เกมเรียงตามตัวอักษร ลดภาระการคำนวณของ Flutter
     const sql = "SELECT * FROM games ORDER BY game_name ASC";
-    
+
     pool.query(sql, (err, results) => {
         if (err) return res.status(500).json({ error: "ไม่สามารถดึงข้อมูลเกมได้" });
         res.json(results);
@@ -94,22 +94,22 @@ app.get('/items', (req, res) => {
 // [GET] ดึงข้อมูลประวัติการสุ่ม (JOIN ตารางให้แล้ว เพื่อให้แอปนำไปโชว์ได้เลย)
 app.get('/gacha', (req, res) => {
     const userId = req.query.user_id; // ดึงเฉพาะประวัติของคนที่ Login (เช่น /gacha?user_id=5)
-    
+
     // ใช้ SQL JOIN ดึงชื่อเกม และชื่อไอเท็ม มาประกอบร่างกันจากฐานข้อมูลเลย
-    let sql = `
-        SELECT 
-            h.id AS history_id,
-            h.created_at,
-            u.username,
-            g.game_name,
-            i.item_name,
-            i.rarity,
-            i.item_image
-        FROM gacha h
-        JOIN users u ON h.user_id = u.id
-        JOIN items i ON h.item_id = i.id
-        JOIN games g ON i.game_id = g.id
-    `;
+    const query = `
+    SELECT 
+        ga.gacha_id AS history_id,
+        ga.gacha_date AS created_at,
+        u.username,
+        g.gamename AS game_name,
+        i.itemname AS item_name,
+        i.itemrarity AS rarity
+    FROM gacha ga
+    JOIN users u ON ga.user_id = u.user_id
+    JOIN items i ON ga.item_id = i.item_id
+    JOIN games g ON i.game_id = g.game_id
+    ORDER BY ga.gacha_date DESC
+`;
     let params = [];
 
     // กรองเฉพาะ User คนนั้นๆ
