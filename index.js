@@ -86,3 +86,29 @@ app.listen(process.env.PORT || 3000, () => {
 
 // export the app for vercel serverless functions
 module.exports = app;
+
+// เส้นทางสำหรับ Login ในไฟล์ index.js ของคุณ
+app.post('/login', (req, res) => {
+  const { username, userpassword } = req.body; // รับค่าจาก Flutter
+  
+  // คำสั่ง SQL ตรวจสอบ User และ Password
+  const sql = "SELECT * FROM users WHERE username = ? AND userpassword = ?";
+  
+  pool.query(sql, [username, userpassword], (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+    }
+    
+    if (results.length > 0) {
+      // พบข้อมูลผู้ใช้ ส่งข้อมูลกลับไปให้แอป
+      res.json({
+        status: "ok",
+        message: "เข้าสู่ระบบสำเร็จ",
+        user: results[0] // ส่งข้อมูล User รวมถึง Avatar กลับไปด้วย
+      });
+    } else {
+      // ไม่พบข้อมูลหรือรหัสผิด
+      res.status(401).json({ status: "error", message: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+    }
+  });
+});
