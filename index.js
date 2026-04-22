@@ -15,26 +15,37 @@ app.get('/', (req, res) => {
     res.send('Gacha System API is running!');
 });
 
-// หน้าข้อมูล Users [cite: 730]
-app.get('/users', (req, res) => {
-    connection.query(
-        'SELECT user_id, username, avatar FROM users',
-        function (err, results, fields) {
-            if (err) return res.status(500).send(err);
-            res.send(results);
-        }
-    );
-});
-
 // หน้าข้อมูล Games
 app.get('/games', (req, res) => {
-    connection.query(
-        'SELECT * FROM games',
-        function (err, results, fields) {
-            if (err) return res.status(500).send(err);
-            res.send(results);
-        }
-    );
+    try {
+    // เชื่อมต่อฐานข้อมูล TiDB
+    const connection = await mysql.createConnection(dbConfig);
+
+    // คำสั่ง SQL ดึงข้อมูลจากตาราง games
+    // อ้างอิงตาม ERD คือดึง game_id, gamename, gametype, gameavatar
+    const sql = `
+      SELECT 
+        game_id, 
+        gamename, 
+        gametype, 
+        gameavatar 
+      FROM games
+      ORDER BY game_id ASC;
+    `;
+
+    // สั่งรัน SQL
+    const [rows] = await connection.execute(sql);
+    
+    // ส่งข้อมูลกลับไปให้ Flutter ในรูปแบบ JSON
+    res.json(rows);
+
+    // ปิดการเชื่อมต่อ
+    await connection.end();
+
+  } catch (error) {
+    console.error('Error fetching games:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // หน้าข้อมูล Items
@@ -49,23 +60,38 @@ app.get('/items', (req, res) => {
 });
 
 // หน้าข้อมูลประวัติการสุ่ม Gacha (Join ตารางเพื่อแสดงชื่อ)
-app.get('/gacha', (req, res) => {
-    const query = `
-        SELECT 
-            g.gacha_id, g.amount, g.gacha_date, 
-            u.username, i.itemname, i.itemrarity
-        FROM gacha g
-        LEFT JOIN users u ON g.user_id = u.user_id
-        LEFT JOIN items i ON g.item_id = i.item_id
-        ORDER BY g.gacha_date DESC
+app.get('/gacha', async (req, res) => {
+    try {
+    // 1. เชื่อมต่อฐานข้อมูล TiDB
+    const connection = await mysql.createConnection(dbConfig);
+
+    // 2. เอาคำสั่ง SQL มาใส่ตรงนี้!
+    const sql = `
+      SELECT 
+          ga.gacha_id, 
+          ga.gacha_date, 
+          gm.gamename, 
+          i.itemname, 
+          i.itemrarity
+      FROM gacha ga
+      JOIN items i ON ga.item_id = i.item_id
+      JOIN games gm ON i.game_id = gm.game_id
+      ORDER BY ga.gacha_date DESC;
     `;
-    connection.query(
-        query,
-        function (err, results, fields) {
-            if (err) return res.status(500).send(err);
-            res.send(results);
-        }
-    );
+
+    // 3. สั่งรัน SQL
+    const [rows] = await connection.execute(sql);
+    
+    // 4. ส่งข้อมูลกลับไปให้ Flutter ในรูปแบบ JSON
+    res.json(rows);
+
+    // ปิดการเชื่อมต่อ
+    await connection.end();
+
+  } catch (error) {
+    console.error('Error fetching gacha history:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // export the app for vercel serverless functions [cite: 785]
