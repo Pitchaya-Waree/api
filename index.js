@@ -62,9 +62,6 @@ app.get('/items', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-        }
-    );
-});
 
 app.get('/items/:game_id', async (req, res) => {
   try {
