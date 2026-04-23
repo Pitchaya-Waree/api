@@ -94,5 +94,43 @@ app.get('/gacha', async (req, res) => {
   }
 });
 
+app.get('/gacha/random/:gameId', async (req, res) => {
+  try {
+    const gameId = req.params.gameId;
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // คำสั่ง SQL ดึงไอเทมของเกมนั้นๆ และสุ่มมา 1 ชิ้น (ORDER BY RAND() LIMIT 1)
+    const sql = `SELECT * FROM items WHERE game_id = ? ORDER BY RAND() LIMIT 1`;
+    const [rows] = await connection.execute(sql, [gameId]);
+    await connection.end();
+
+    if (rows.length > 0) {
+      res.json(rows[0]); // ส่งข้อมูลไอเทมที่สุ่มได้กลับไป
+    } else {
+      res.status(404).json({ error: 'ไม่พบไอเทมสำหรับเกมนี้' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.post('/gacha/save', async (req, res) => {
+  try {
+    const { item_id, amount } = req.body;
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // บันทึกข้อมูล โดย gacha_date จะใช้วันเวลาปัจจุบันของ Database (NOW())
+    const sql = `INSERT INTO gacha (item_id, amount, gacha_date) VALUES (?, ?, NOW())`;
+    const [result] = await connection.execute(sql, [item_id, amount]);
+    await connection.end();
+
+    res.json({ success: true, message: 'บันทึกสำเร็จ', gacha_id: result.insertId });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // export the app for vercel serverless functions [cite: 785]
 module.exports = app;
