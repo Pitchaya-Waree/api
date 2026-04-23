@@ -1,101 +1,114 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2');
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// สร้างการเชื่อมต่อฐานข้อมูลโดยใช้ DATABASE_URL จากไฟล์ .env [cite: 685, 725, 726]
-const connection = mysql.createConnection(process.env.DATABASE_URL);
-
-// หน้าแรก (Home) [cite: 727, 729]
-app.get('/', (req, res) => {
-    res.send('Gacha System API is running!');
+// สร้าง Connection Pool สำหรับ Vercel Serverless
+const pool = mysql.createPool({
+  uri: process.env.DATABASE_URL,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
-// หน้าข้อมูล Games
+app.get('/', (req, res) => {
+  res.send('Welcome to Gacha API!');
+});
+
+// 1. GAMES - จัดการข้อมูลเกม
+// ดึงข้อมูลเกมทั้งหมด (game_id, gamename, gametype, gameavatar)
 app.get('/games', async (req, res) => {
-    try {
-    // เชื่อมต่อฐานข้อมูล TiDB
-    const connection = await mysql.createConnection(dbConfig);
-
-    // คำสั่ง SQL ดึงข้อมูลจากตาราง games
-    // อ้างอิงตาม ERD คือดึง game_id, gamename, gametype, gameavatar
-    const sql = `
-      SELECT 
-        game_id, 
-        gamename, 
-        gametype, 
-        gameavatar 
-      FROM games
-      ORDER BY game_id ASC;
-    `;
-
-    // สั่งรัน SQL
-    const [rows] = await connection.execute(sql);
-    
-    // ส่งข้อมูลกลับไปให้ Flutter ในรูปแบบ JSON
-    res.json(rows);
-
-    // ปิดการเชื่อมต่อ
-    await connection.end();
-
-  } catch (error) {
-    console.error('Error fetching games:', error);
+  try {
+    const [results] = await pool.query('SELECT * FROM games');
+    res.json(results);
+  } catch (err) {
+    console.error('Error fetching games:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-// หน้าข้อมูล Items
+// 2. ITEMS - จัดการข้อมูลไอเท็ม
+// ดึงไอเท็มทั้งหมดที่มีในระบบ
 app.get('/items', async (req, res) => {
-    try {
-        const connection = await mysql.createConnection(dbConfig);
-        const sql = 'SELECT * FROM items';
-        const [rows] = await connection.execute(sql);
-        res.json(rows);
-        await connection.end();
-    } catch (error) {
-        console.error('Error fetching items:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
+  try {
+    const [results] = await pool.query('SELECT * FROM items');
+    res.json(results);
+  } catch (err) {
+    console.error('Error fetching all items:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
-app.get('/items/:game_id', async (req, res) => {
+// ดึงไอเท็มโดยฟิลเตอร์ตาม game_id ที่เลือก
+app.get('/games/:game_id/items', async (req, res) => {
   try {
-    const connection = await mysql.createConnection(dbConfig);
     const gameId = req.params.game_id;
-    
-    const sql = `SELECT * FROM items WHERE game_id = ?`;
-    const [rows] = await connection.execute(sql, [gameId]);
-    
-    res.json(rows);
-    await connection.end();
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch items' });
+    const [results] = await pool.query('SELECT * FROM items WHERE game_id = ?', [gameId]);
+    res.json(results);
+  } catch (err) {
+    console.error('Error fetching items for game:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-app.post('/api/gacha', async (req, res) => {
+// 3. GACHA - จัดการประวัติการสุ่ม
+// บันทึกผลการสุ่มกาชา (เพิ่มข้อมูลลงตาราง gacha)
+app.post('/gacha', async (req, res) => {
   try {
-    const connection = await mysql.createConnection(dbConfig);
-    // รับค่า item_id และ amount จาก Flutter
-    const { item_id, amount } = req.body; 
+    // รับค่า amount และ item_id ที่สุ่มได้จากแอป Flutter
+    const { amount, item_id } = req.body;
     
-    // บันทึกข้อมูล โดยใช้ NOW() สำหรับเวลาปัจจุบัน
-    const sql = `INSERT INTO gacha (item_id, amount, gacha_date) VALUES (?, ?, NOW())`;
-    const [result] = await connection.execute(sql, [item_id, amount]);
+    // สร้าง timestamp สำหรับ gacha_date ในฝั่ง Server
+    const gacha_date = new Date();
+
+    const [result] = await pool.query(
+      'INSERT INTO gacha (amount, gacha_date, item_id) VALUES (?, ?, ?)',
+      [amount, gacha_date, item_id]
+    );
     
-    res.json({ success: true, message: 'บันทึกสำเร็จ', insertId: result.insertId });
-    await connection.end();
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to save gacha history' });
+    res.status(201).json({ 
+      message: 'Gacha recorded successfully!',
+      gacha_id: result.insertId 
+    });
+  } catch (err) {
+    console.error('Error recording gacha:', err);
+    res.status(500).json({ error: 'Failed to record gacha result' });
   }
 });
 
+// ดึงประวัติการสุ่มทั้งหมด (JOIN ตารางเพื่อให้ได้ชื่อไอเท็มและชื่อเกมไปแสดงผล)
+app.get('/gacha', async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        g.gacha_id, 
+        g.amount, 
+        g.gacha_date, 
+        i.itemname, 
+        i.itemrarity, 
+        gm.gamename 
+      FROM gacha g
+      JOIN items i ON g.item_id = i.item_id
+      JOIN games gm ON i.game_id = gm.game_id
+      ORDER BY g.gacha_date DESC
+    `;
+    const [results] = await pool.query(query);
+    res.json(results);
+  } catch (err) {
+    console.error('Error fetching gacha history:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
-// export the app for vercel serverless functions [cite: 785]
+// เริ่มการทำงานของ Server
+app.listen(process.env.PORT || 3000, () => {
+  console.log('Gacha API server listening on port 3000');
+});
+
+// Export app สำหรับ Vercel Serverless Functions
 module.exports = app;
