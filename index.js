@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
 });
 
 // หน้าข้อมูล Games
-app.get('/games', (req, res) => {
+app.get('/games', async (req, res) => {
     try {
     // เชื่อมต่อฐานข้อมูล TiDB
     const connection = await mysql.createConnection(dbConfig);
@@ -50,48 +50,54 @@ app.get('/games', (req, res) => {
 });
 
 // หน้าข้อมูล Items
-app.get('/items', (req, res) => {
-    connection.query(
-        'SELECT * FROM items',
-        function (err, results, fields) {
-            if (err) return res.status(500).send(err);
-            res.send(results);
+app.get('/items', async (req, res) => {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        const sql = 'SELECT * FROM items';
+        const [rows] = await connection.execute(sql);
+        res.json(rows);
+        await connection.end();
+    } catch (error) {
+        console.error('Error fetching items:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
         }
     );
 });
 
-// app.get('/items/:game_id', async (req, res) => {
-//   try {
-//     const connection = await mysql.createConnection(dbConfig);
-//     const gameId = req.params.game_id;
+app.get('/items/:game_id', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const gameId = req.params.game_id;
     
-//     const sql = `SELECT * FROM items WHERE game_id = ?`;
-//     const [rows] = await connection.execute(sql, [gameId]);
+    const sql = `SELECT * FROM items WHERE game_id = ?`;
+    const [rows] = await connection.execute(sql, [gameId]);
     
-//     res.json(rows);
-//     await connection.end();
-//   } catch (error) {
-//     res.status(500).json({ error: 'Failed to fetch items' });
-//   }
-// });
+    res.json(rows);
+    await connection.end();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch items' });
+  }
+});
 
-// app.post('/api/gacha', async (req, res) => {
-//   try {
-//     const connection = await mysql.createConnection(dbConfig);
-//     // รับค่า item_id และ amount จาก Flutter
-//     const { item_id, amount } = req.body; 
+app.post('/api/gacha', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    // รับค่า item_id และ amount จาก Flutter
+    const { item_id, amount } = req.body; 
     
-//     // บันทึกข้อมูล โดยใช้ NOW() สำหรับเวลาปัจจุบัน
-//     const sql = `INSERT INTO gacha (item_id, amount, gacha_date) VALUES (?, ?, NOW())`;
-//     const [result] = await connection.execute(sql, [item_id, amount]);
+    // บันทึกข้อมูล โดยใช้ NOW() สำหรับเวลาปัจจุบัน
+    const sql = `INSERT INTO gacha (item_id, amount, gacha_date) VALUES (?, ?, NOW())`;
+    const [result] = await connection.execute(sql, [item_id, amount]);
     
-//     res.json({ success: true, message: 'บันทึกสำเร็จ', insertId: result.insertId });
-//     await connection.end();
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: 'Failed to save gacha history' });
-//   }
-// });
+    res.json({ success: true, message: 'บันทึกสำเร็จ', insertId: result.insertId });
+    await connection.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to save gacha history' });
+  }
+});
 
 
 // export the app for vercel serverless functions [cite: 785]
