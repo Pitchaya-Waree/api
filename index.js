@@ -59,38 +59,36 @@ app.get('/items', (req, res) => {
     );
 });
 
-// หน้าข้อมูลประวัติการสุ่ม Gacha (Join ตารางเพื่อแสดงชื่อ)
-app.get('/gacha', async (req, res) => {
-    try {
-    // 1. เชื่อมต่อฐานข้อมูล TiDB
+app.get('/items/:game_id', async (req, res) => {
+  try {
     const connection = await mysql.createConnection(dbConfig);
-
-    // 2. เอาคำสั่ง SQL มาใส่ตรงนี้!
-    const sql = `
-      SELECT 
-          ga.gacha_id, 
-          ga.gacha_date, 
-          gm.gamename, 
-          i.itemname, 
-          i.itemrarity
-      FROM gacha ga
-      JOIN items i ON ga.item_id = i.item_id
-      JOIN games gm ON i.game_id = gm.game_id
-      ORDER BY ga.gacha_date DESC;
-    `;
-
-    // 3. สั่งรัน SQL
-    const [rows] = await connection.execute(sql);
+    const gameId = req.params.game_id;
     
-    // 4. ส่งข้อมูลกลับไปให้ Flutter ในรูปแบบ JSON
+    const sql = `SELECT * FROM items WHERE game_id = ?`;
+    const [rows] = await connection.execute(sql, [gameId]);
+    
     res.json(rows);
-
-    // ปิดการเชื่อมต่อ
     await connection.end();
-
   } catch (error) {
-    console.error('Error fetching gacha history:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Failed to fetch items' });
+  }
+});
+
+app.post('/api/gacha', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    // รับค่า item_id และ amount จาก Flutter
+    const { item_id, amount } = req.body; 
+    
+    // บันทึกข้อมูล โดยใช้ NOW() สำหรับเวลาปัจจุบัน
+    const sql = `INSERT INTO gacha (item_id, amount, gacha_date) VALUES (?, ?, NOW())`;
+    const [result] = await connection.execute(sql, [item_id, amount]);
+    
+    res.json({ success: true, message: 'บันทึกสำเร็จ', insertId: result.insertId });
+    await connection.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to save gacha history' });
   }
 });
 
