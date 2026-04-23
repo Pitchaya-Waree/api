@@ -6,6 +6,7 @@ require('dotenv').config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // สร้างการเชื่อมต่อฐานข้อมูลโดยใช้ DATABASE_URL จากไฟล์ .env [cite: 685, 725, 726]
 const connection = mysql.createConnection(process.env.DATABASE_URL);
@@ -59,38 +60,38 @@ app.get('/items', (req, res) => {
     );
 });
 
-app.get('/items/:game_id', async (req, res) => {
-  try {
-    const connection = await mysql.createConnection(dbConfig);
-    const gameId = req.params.game_id;
+// app.get('/items/:game_id', async (req, res) => {
+//   try {
+//     const connection = await mysql.createConnection(dbConfig);
+//     const gameId = req.params.game_id;
     
-    const sql = `SELECT * FROM items WHERE game_id = ?`;
-    const [rows] = await connection.execute(sql, [gameId]);
+//     const sql = `SELECT * FROM items WHERE game_id = ?`;
+//     const [rows] = await connection.execute(sql, [gameId]);
     
-    res.json(rows);
-    await connection.end();
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch items' });
-  }
-});
+//     res.json(rows);
+//     await connection.end();
+//   } catch (error) {
+//     res.status(500).json({ error: 'Failed to fetch items' });
+//   }
+// });
 
-app.post('/api/gacha', async (req, res) => {
-  try {
-    const connection = await mysql.createConnection(dbConfig);
-    // รับค่า item_id และ amount จาก Flutter
-    const { item_id, amount } = req.body; 
+// app.post('/api/gacha', async (req, res) => {
+//   try {
+//     const connection = await mysql.createConnection(dbConfig);
+//     // รับค่า item_id และ amount จาก Flutter
+//     const { item_id, amount } = req.body; 
     
-    // บันทึกข้อมูล โดยใช้ NOW() สำหรับเวลาปัจจุบัน
-    const sql = `INSERT INTO gacha (item_id, amount, gacha_date) VALUES (?, ?, NOW())`;
-    const [result] = await connection.execute(sql, [item_id, amount]);
+//     // บันทึกข้อมูล โดยใช้ NOW() สำหรับเวลาปัจจุบัน
+//     const sql = `INSERT INTO gacha (item_id, amount, gacha_date) VALUES (?, ?, NOW())`;
+//     const [result] = await connection.execute(sql, [item_id, amount]);
     
-    res.json({ success: true, message: 'บันทึกสำเร็จ', insertId: result.insertId });
-    await connection.end();
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to save gacha history' });
-  }
-});
+//     res.json({ success: true, message: 'บันทึกสำเร็จ', insertId: result.insertId });
+//     await connection.end();
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: 'Failed to save gacha history' });
+//   }
+// });
 
 
 // export the app for vercel serverless functions [cite: 785]
