@@ -114,7 +114,7 @@ app.post('/games', async (req, res) => {
     try {
         const { gamename, gametype, gameavatar } = req.body;
 
-        // ✅ เพิ่มคำสั่ง INSERT จริงๆ ลงไปตรงนี้
+        // เพิ่มคำสั่ง INSERT จริงๆ ลงไปตรงนี้
         const [result] = await pool.query(
             'INSERT INTO games (gamename, gametype, gameavatar) VALUES (?, ?, ?)',
             [gamename, gametype, gameavatar]
@@ -136,6 +136,33 @@ if (process.env.NODE_ENV !== 'production') {
         console.log('Server is running on port 3000');
     });
 }
+
+// --- เพิ่มประตูสำหรับบันทึก Item ใหม่ ---
+app.post('/items', async (req, res) => {
+    try {
+        // รับค่าจาก Flutter (itemname, itemtype, itemrarity, game_id)
+        const { itemname, itemtype, itemrarity, game_id } = req.body;
+
+        // ตรวจสอบว่าส่งค่ามาครบไหม (ป้องกัน Error)
+        if (!itemname || !game_id) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        // คำสั่ง SQL สำหรับ INSERT ลงตาราง items
+        const [result] = await pool.query(
+            'INSERT INTO items (itemname, itemtype, itemrarity, game_id) VALUES (?, ?, ?, ?)',
+            [itemname, itemtype, itemrarity, game_id]
+        );
+
+        res.status(201).json({ 
+            message: "Item added successfully!", 
+            item_id: result.insertId 
+        });
+    } catch (err) {
+        console.error('Error inserting item:', err);
+        res.status(500).send("Server Error: " + err.message);
+    }
+});
 
 // Export app สำหรับ Vercel Serverless Functions
 module.exports = app;
