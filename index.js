@@ -20,7 +20,7 @@ app.get('/', (req, res) => {
   res.send('Welcome to Gacha API!');
 });
 
-// 1. GAMES - จัดการข้อมูลเกม
+//GAMES - จัดการข้อมูลเกม
 // ดึงข้อมูลเกมทั้งหมด (game_id, gamename, gametype, gameavatar)
 app.get('/games', async (req, res) => {
   try {
@@ -32,7 +32,7 @@ app.get('/games', async (req, res) => {
   }
 });
 
-// 2. ITEMS - จัดการข้อมูลไอเท็ม
+// ITEMS - จัดการข้อมูลไอเท็ม
 // ดึงไอเท็มทั้งหมดที่มีในระบบ
 app.get('/items', async (req, res) => {
   try {
@@ -56,7 +56,7 @@ app.get('/games/:game_id/items', async (req, res) => {
   }
 });
 
-// 3. GACHA - จัดการประวัติการสุ่ม
+// GACHA - จัดการประวัติการสุ่ม
 // บันทึกผลการสุ่มกาชา (เพิ่มข้อมูลลงตาราง gacha)
 app.post('/gacha', async (req, res) => {
   try {
@@ -109,6 +109,33 @@ app.get('/gacha', async (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log('Gacha API server listening on port 3000');
 });
+
+app.post('/games', async (req, res) => {
+    try {
+        const { gamename, gametype, gameavatar } = req.body;
+
+        // ✅ เพิ่มคำสั่ง INSERT จริงๆ ลงไปตรงนี้
+        const [result] = await pool.query(
+            'INSERT INTO games (gamename, gametype, gameavatar) VALUES (?, ?, ?)',
+            [gamename, gametype, gameavatar]
+        );
+
+        res.status(201).json({ 
+            message: "Success", 
+            id: result.insertId 
+        });
+    } catch (err) {
+        console.error('Error inserting game:', err);
+        res.status(500).send(err.message);
+    }
+});
+
+// เริ่มการทำงานของ Server (เฉพาะ Local)
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(3000, () => {
+        console.log('Server is running on port 3000');
+    });
+}
 
 // Export app สำหรับ Vercel Serverless Functions
 module.exports = app;
